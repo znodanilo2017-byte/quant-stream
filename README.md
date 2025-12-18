@@ -1,8 +1,12 @@
 ## ⚡ QuantStream: Real-Time Arbitrage Engine
 
-QuantStream is a high-frequency, event-driven analytics pipeline built to detect statistical arbitrage opportunities in cryptocurrency markets (focused on BTC/ETH correlation spreads).
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Tech Stack](https://img.shields.io/badge/stack-Python_|_Redpanda_|_TimescaleDB-blue)
+![Infrastructure](https://img.shields.io/badge/infra-Terraform_|_AWS_EC2-orange)
 
-Unlike traditional polling bots, QuantStream uses a streaming-first architecture capable of ingesting 800+ trades per second with sub-second latency, deployed as a cloud-native distributed system on AWS.
+**QuantStream** is a high-frequency event-driven pipeline designed to detect statistical arbitrage opportunities in cryptocurrency markets (BTC/ETH correlations).
+
+Unlike standard API-polling bots, this engine utilizes a **streaming architecture** capable of ingesting and processing 800+ trade events per second with sub-second latency. It is deployed as a cloud-native distributed system on AWS.
 
 ⸻
 
@@ -13,21 +17,36 @@ Unlike traditional polling bots, QuantStream uses a streaming-first architecture
 
 ⸻
 
-## 🏗 System Architecture
+The system is built on the **"Smart Pipes, Dumb Endpoints"** philosophy, ensuring decoupling and fault tolerance.
 
-QuantStream follows a “Smart Pipes, Dumb Endpoints” design to ensure high decoupling, fault tolerance, and scalability.
+| Component | Technology | Role |
+| :--- | :--- | :--- |
+| **Ingestion Layer** | **Python (Asyncio/Aiohttp)** | Connects to Binance WebSockets. Normalizes raw trade streams into standard JSON events. |
+| **Message Broker** | **Redpanda (Kafka API)** | High-performance C++ streaming platform. Buffers data to handle backpressure and prevent data loss. |
+| **Processing Engine** | **Python (Pandas/Deque)** | Consumes streams. Maintains in-memory rolling windows (60s). Calculates correlation spreads in real-time. |
+| **Storage Layer** | **TimescaleDB** | PostgreSQL extension optimized for high-velocity time-series data. Handles 1,000+ inserts/sec. |
+| **Visualization** | **Streamlit** | Live operational dashboard for visualizing spreads and system health. |
+| **Infrastructure** | **Terraform** | Fully reproducible Infrastructure as Code (IaC). Provisions AWS EC2, Security Groups, and Networking. |
 
-Component	Technology	Role
-Ingestion Layer	Python (Asyncio / Aiohttp)	Connects to Binance WebSockets and normalizes raw trades into unified JSON events.
-Message Broker	Redpanda (Kafka API)	High-performance C++ broker that buffers streams, absorbs backpressure, and prevents data loss.
-Processing Engine	Python (Pandas / Deque)	Maintains rolling 60-second windows and computes real-time correlation spreads.
-Storage Layer	TimescaleDB	Time-series optimized PostgreSQL extension supporting 1,000+ inserts/sec.
-Visualization	Streamlit	Live dashboard for spreads, indicators, and system health.
-Infrastructure	Terraform	Reproducible IaC provisioning EC2, networking, and security configuration.
+---
 
 ![Architecture Diagram](Diagram.png)
 
 ⸻
+
+## 📂 Project Structure
+
+```bash
+quant-platform/
+├── dashboard/           # Streamlit Visualization App
+├── infrastructure/      # Terraform Cloud Configuration
+│   └── terraform/       # AWS Provisioning Scripts
+├── services/
+│   ├── ingestor/        # WebSocket Connector (Binance -> Kafka)
+│   └── processor/       # Quant Logic (Kafka -> DB + Telegram)
+├── docker-compose.yml   # Container Orchestration
+└── .env                 # API Secrets (Not committed)
+```
 
 ## 🚀 Key Features
 	•	Real-Time Anomaly Detection: Flags BTC/ETH correlation divergence >0.5% within 60 seconds.
@@ -75,7 +94,7 @@ To reset the data and re-initialize:
 ```bash
 docker-compose down -v
 docker-compose up -d
-
+```
 ⸻
 
 ## ☁️ Cloud Deployment (AWS)
