@@ -4,16 +4,19 @@
 ![Tech Stack](https://img.shields.io/badge/stack-Python_|_Redpanda_|_TimescaleDB-blue)
 ![Infrastructure](https://img.shields.io/badge/infra-Terraform_|_AWS_EC2-orange)
 
-**QuantStream** is a high-frequency event-driven pipeline designed to detect statistical arbitrage opportunities in cryptocurrency markets (BTC/ETH correlations).
 
-Unlike standard API-polling bots, this engine utilizes a **streaming architecture** capable of ingesting and processing 800+ trade events per second with sub-second latency. It is deployed as a cloud-native distributed system on AWS.
+QuantStream is a cloud-native, event-driven analytics engine designed to detect statistical arbitrage opportunities in cryptocurrency markets (BTC/ETH correlation spreads) with sub-second latency.
+
+Unlike traditional polling bots, QuantStream leverages a streaming-first architecture capable of ingesting 800+ trades per second while maintaining strict fault tolerance. It is fully containerized and deployed on AWS via Terraform.
 
 ⸻
 
 ## 🎥 Live Demo
 
-▶️ 
-<video controls src="Live_Demo.mov" title="Live Demo"></video>
+
+![GIF Demo](GIF_Demo.gif)
+
+[Youtube link](https://youtube.com/shorts/6Xtn1XU8GI8)
 
 ⸻
 
@@ -48,6 +51,72 @@ quant-platform/
 └── .env                 # API Secrets (Not committed)
 ```
 
+⸻
+
+## 🧠 Engineering Tradeoffs & Design Decisions
+
+1. **Streaming-First Architecture (Why Not Polling?)**
+
+Tradeoff: Simpler REST polling vs higher-complexity streaming.
+
+Decision: WebSocket + event streaming.
+Polling introduces latency spikes and data loss during volatility. A streaming-first model ensures continuous ingestion with predictable latency under burst conditions.
+
+
+
+2. **Redpanda vs Apache Kafka**
+
+Tradeoff: Ecosystem maturity vs operational efficiency.
+
+Decision: Redpanda (Kafka API compatible).
+	•	C++ implementation → significantly lower memory footprint
+	•	No JVM, no Zookeeper → simpler ops on small EC2 instances
+	•	Better fit for cost-constrained, high-throughput pipelines
+
+This allows sustained ingestion (800+ events/sec) on t3.medium / c7i-class instances without OOM risk.
+
+
+
+3. **Decoupling Ingestion from Storage**
+
+Tradeoff: Simpler synchronous writes vs fault tolerance.
+
+Decision: Full decoupling via message broker.
+	•	Ingest layer never blocks on database availability
+	•	Redpanda buffers data during TimescaleDB outages
+	•	Enables zero-downtime maintenance and schema migrations
+
+This design treats the broker as a shock absorber between volatile markets and stateful systems.
+
+
+
+4. **In-Memory Sliding Windows vs Stream Frameworks**
+
+Tradeoff: Spark/Flink vs lightweight Python analytics.
+
+Decision: Python + Deque + Pandas.
+	•	Sub-second latency without cluster overhead
+	•	Easier to audit, debug, and adapt to non-financial domains
+	•	Optimized for real-time signals, not batch analytics
+
+The system favors operational clarity and adaptability over maximal theoretical throughput.
+
+
+
+5. **Cost-Aware Cloud Design**
+
+Constraints: Ukraine-based deployment realities, limited infra budgets.
+
+Optimizations include:
+	•	Strict Docker CPU/memory limits
+	•	Linux swap tuning to avoid burst OOM kills
+	•	Avoidance of JVM-heavy components
+	•	Terraform-managed reproducibility to minimize human error
+
+Result: a production-grade real-time system that remains economically viable.
+
+⸻
+
 ## 🚀 Key Features
 	•	Real-Time Anomaly Detection: Flags BTC/ETH correlation divergence >0.5% within 60 seconds.
 	•	Zero-Downtime Reliability: If TimescaleDB is unavailable, the ingest layer continues streaming with Redpanda buffering.
@@ -65,21 +134,21 @@ Prerequisites
 
 ⸻
 
-## 1. Local Setup
+# 1. Local Setup
 
 
-# Clone the repository
+## Clone the repository
 git clone https://github.com/yourusername/quant-platform.git
 cd quant-platform
 
-# Configure secrets
+## Configure secrets
 cp .env.example .env
-# Add TELEGRAM_TOKEN and CHAT_ID to .env
+## Add TELEGRAM_TOKEN and CHAT_ID to .env
 
 
 ⸻
 
-## 2. Launch the Stack
+# 2. Launch the Stack
 
 docker-compose up -d --build
 
@@ -103,11 +172,11 @@ Terraform automates provisioning of a reproducible environment.
 
 cd infrastructure/terraform
 
-# Initialize + preview
+## Initialize + preview
 terraform init
 terraform plan
 
-# Deploy to eu-central-1
+## Deploy to eu-central-1
 terraform apply
 
 EC2 instances automatically install Docker and Git via user_data scripts.
