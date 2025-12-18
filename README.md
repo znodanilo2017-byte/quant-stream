@@ -134,7 +134,7 @@ Prerequisites
 
 ⸻
 
-# 1. Local Setup
+## 1. Local Setup
 
 
 ## Clone the repository
@@ -148,7 +148,7 @@ cp .env.example .env
 
 ⸻
 
-# 2. Launch the Stack
+## 2. Launch the Stack
 
 docker-compose up -d --build
 
