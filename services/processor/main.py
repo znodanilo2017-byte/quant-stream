@@ -11,7 +11,7 @@ KAFKA_BROKER = os.getenv('KAFKA_BROKER', 'redpanda:9092')
 TOPIC = 'market_data'
 DB_HOST = os.getenv('DB_HOST', 'timescaledb')
 
-# Telegram Keys
+# Telegram Keys (added for future use if needed)
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -19,8 +19,8 @@ def get_db_connection():
     conn = psycopg2.connect(
         host=DB_HOST, 
         database="market_data", 
-        user="postgres", 
-        password="password"
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS")
     )
     conn.autocommit = True # 👈 FORCE SAVE IMMEDIATELY
     return conn
