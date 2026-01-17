@@ -75,7 +75,7 @@ while True:
                     # Chart
                     fig = px.line(df, x='time', y='normalized_price', color='symbol', 
                                   title="Relative Performance (Last 5 Mins)")
-                    st.plotly_chart(fig, use_container_width=True, key=f"chart_{time.time()}")
+                    st.plotly_chart(fig, width='stretch', key=f"chart_{time.time()}")
                 else:
                     st.warning("Waiting for both BTC and ETH data streams...")
                 

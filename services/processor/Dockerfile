@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y libpq-dev gcc
 # but usually we assume a requirements.txt exists. 
 # Let's assume you copy the one from dashboard or create one.
 # For safety, let's just install inline to be sure:
-RUN pip install kafka-python-ng psycopg2-binary requests python-dotenv
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 COPY . .
+COPY isolation_forest.pkl .
 CMD ["python", "-u", "main.py"]

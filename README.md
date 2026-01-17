@@ -11,6 +11,16 @@ Unlike traditional polling bots, QuantStream leverages a streaming-first archite
 
 ⸻
 
+🚀 Update (Jan 2026): Released v2.0 "Crypto Sentinel"
+
+Replaced simple threshold logic with Unsupervised Learning (Isolation Forest).
+
+Migrated visualization from Streamlit to Grafana.
+
+View v1.0 (Arbitrage Engine) here: [Link to Release tag]
+
+⸻
+
 ## 🎥 Live Demo
 
 
@@ -44,6 +54,11 @@ quant-platform/
 ├── dashboard/           # Streamlit Visualization App
 ├── infrastructure/      # Terraform Cloud Configuration
 │   └── terraform/       # AWS Provisioning Scripts
+├── ml_core/
+│	├──extract_data.py/
+│	└──train_model.py/
+├── sample_data/
+│   └── market_data_sample_10k.csv/
 ├── services/
 │   ├── ingestor/        # WebSocket Connector (Binance -> Kafka)
 │   └── processor/       # Quant Logic (Kafka -> DB + Telegram)
