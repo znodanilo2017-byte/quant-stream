@@ -23,3 +23,9 @@ var.tfvars
 .DS_Store
 .vscode/
 .idea/
+
+# Data Science & Models
+*.csv
+*.joblib
+data/
+models/

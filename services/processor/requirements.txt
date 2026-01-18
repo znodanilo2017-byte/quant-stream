@@ -2,7 +2,8 @@ kafka-python
 psycopg2-binary
 requests
 
-scikit-learn
+scikit-learn==1.7.2
 pandas
 numpy
 joblib
+pandas_ta

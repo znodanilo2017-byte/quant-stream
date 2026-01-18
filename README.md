@@ -1,213 +1,159 @@
-## ⚡ QuantStream: Real-Time Arbitrage Engine
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Tech Stack](https://img.shields.io/badge/stack-Python_|_Redpanda_|_TimescaleDB-blue)
-![Infrastructure](https://img.shields.io/badge/infra-Terraform_|_AWS_EC2-orange)
+# ⚡ QuantStream: Real-Time Streaming Analytics for Crypto Markets
 
+![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python)
+![Redpanda](https://img.shields.io/badge/Redpanda-Kafka-orange?style=for-the-badge&logo=apachekafka)
+![TimescaleDB](https://img.shields.io/badge/TimescaleDB-PostgreSQL-green?style=for-the-badge&logo=postgresql)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)
+![Status](https://img.shields.io/badge/Status-Operational_Prototype-success?style=for-the-badge)
 
-QuantStream is a cloud-native, event-driven analytics engine designed to detect statistical arbitrage opportunities in cryptocurrency markets (BTC/ETH correlation spreads) with sub-second latency.
-
-Unlike traditional polling bots, QuantStream leverages a streaming-first architecture capable of ingesting 800+ trades per second while maintaining strict fault tolerance. It is fully containerized and deployed on AWS via Terraform.
-
-⸻
-
-🚀 Update (Jan 2026): Released v2.0 "Crypto Sentinel"
-
-Replaced simple threshold logic with Unsupervised Learning (Isolation Forest).
-
-Migrated visualization from Streamlit to Grafana.
-
-View v1.0 (Arbitrage Engine) here: [Link to Release tag]
-
-⸻
-
-## 🎥 Live Demo
-
-
-![GIF Demo](GIF_Demo.gif)
-
-[Youtube link](https://youtube.com/shorts/6Xtn1XU8GI8)
-
-⸻
-
-The system is built on the **"Smart Pipes, Dumb Endpoints"** philosophy, ensuring decoupling and fault tolerance.
-
-| Component | Technology | Role |
-| :--- | :--- | :--- |
-| **Ingestion Layer** | **Python (Asyncio/Aiohttp)** | Connects to Binance WebSockets. Normalizes raw trade streams into standard JSON events. |
-| **Message Broker** | **Redpanda (Kafka API)** | High-performance C++ streaming platform. Buffers data to handle backpressure and prevent data loss. |
-| **Processing Engine** | **Python (Pandas/Deque)** | Consumes streams. Maintains in-memory rolling windows (60s). Calculates correlation spreads in real-time. |
-| **Storage Layer** | **TimescaleDB** | PostgreSQL extension optimized for high-velocity time-series data. Handles 1,000+ inserts/sec. |
-| **Visualization** | **Streamlit** | Live operational dashboard for visualizing spreads and system health. |
-| **Infrastructure** | **Terraform** | Fully reproducible Infrastructure as Code (IaC). Provisions AWS EC2, Security Groups, and Networking. |
+> **High-frequency anomaly detection pipeline processing cryptocurrency trades in real-time using Unsupervised Machine Learning.**
 
 ---
 
-![Architecture Diagram](Diagram.png)
+### 🔄 Project Evolution: v1.0 vs v2.0
+This repository documents the evolution of a quantitative engine from a rule-based arbitrage bot to an AI-powered surveillance system.
 
-⸻
+| Feature | **v1.0 (Legacy)** | **v2.0 (Current)** |
+| :--- | :--- | :--- |
+| **Objective** | Statistical Arbitrage (Pair Trading) | Anomaly Detection (Market Surveillance) |
+| **Logic** | Static Thresholds (`if spread > 0.5%`) | Unsupervised Learning (`IsolationForest`) |
+| **Scope** | Multi-Asset Correlation (BTC vs ETH) | Single-Asset Microstructure (BTC) |
+| **UI** | Streamlit (Tightly coupled to spread logic) | **Grafana (Streaming-native, anomaly-only)** |
 
-## 📂 Project Structure
+👉 **[Click here to view the v1.0 Release (Arbitrage Engine)](https://github.com/znodanilo2017-byte/quant-stream/releases/tag/v1.0-arbitrage)**
 
-```bash
-quant-platform/
-├── dashboard/           # Streamlit Visualization App
-├── infrastructure/      # Terraform Cloud Configuration
-│   └── terraform/       # AWS Provisioning Scripts
-├── ml_core/
-│	├──extract_data.py/
-│	└──train_model.py/
-├── sample_data/
-│   └── market_data_sample_10k.csv/
-├── services/
-│   ├── ingestor/        # WebSocket Connector (Binance -> Kafka)
-│   └── processor/       # Quant Logic (Kafka -> DB + Telegram)
-├── docker-compose.yml   # Container Orchestration
-└── .env                 # API Secrets (Not committed)
+---
+
+## 📉 Project Overview
+“The system is designed to run on a single low-memory cloud instance and sustain ~800 events/sec without backpressure.”
+
+Traditional market alerts rely on static thresholds (e.g., "Alert if price > $100k"). **QuantStream** takes a quantitative approach using the **"Smart Pipes, Dumb Endpoints"** philosophy.
+
+It ingests real-time trade data from Binance, streams it through **Redpanda**, and analyzes market structure using an **Isolation Forest** model. The system detects sudden liquidity injections, flash crashes, and market microstructure anomalies by analyzing volatility, RSI, and volume momentum—not just raw price.
+
+### Key Features
+* **Real-time Ingestion:** Websocket connection to Binance AggTrades (<100ms latency).
+* **Event Streaming:** Decoupled architecture using **Redpanda** (Kafka-compatible).
+* **ML Engine:** Stateful `IsolationForest` model calculating technical indicators on-the-fly (RSI-14, Volatility-20).
+* **Time-Series Storage:** Optimized storage with **TimescaleDB** (PostgreSQL).
+* **Visualization:** Live **Grafana** dashboard for anomaly monitoring.
+
+---
+
+## 🏗 Architecture
+
+The system follows a microservices event-driven architecture:
+
+```mermaid
+graph LR
+    A[Binance API] -->|WebSocket| B(Ingestor Service)
+    B -->|JSON Events| C{Redpanda / Kafka}
+    C -->|Stream| D[ML Processor]
+    D -->|Stateful Analysis| D
+    D -->|Anomalies Only| E[(TimescaleDB)]
+    E -->|SQL Queries| F[Grafana Dashboard]
+
 ```
 
-⸻
+1. **Ingestor:** Python service that connects to Binance WebSocket and pushes raw trades to Redpanda.
+2. **Redpanda:** Acts as the high-throughput message bus, buffering data for the processor.
+3. **ML Processor:** The "Brain". It maintains a rolling window of market data in memory (Deque) to calculate features and runs inference.
+4. **TimescaleDB:** Stores trade history and flagged anomalies efficiently using hypertables.
+5. **Grafana:** Visualizes the price action and highlights detected anomalies with red markers.
+
+---
+
+## 🧠 The "Brain": Machine Learning Logic
+
+Unlike simple price alerts, QuantStream uses a multi-factor feature vector to detect anomalies.
+
+**The Feature Vector:**
+$$ X = [RSI_{14}, Volatility_{20}, VolumeChange] $$
+
+* **RSI (Relative Strength Index):** Detects overbought/oversold conditions.
+* **Volatility (Rolling StdDev):** Detects abnormal market stress.
+* **Volume Momentum:** Detects sudden large-scale execution orders.
+
+The model uses **Isolation Forest**, an unsupervised learning algorithm trained on historical Binance data. It isolates anomalies rather than profiling normal data points.
+
+---
+
+## 📸 Demo
+![Grafana monitor](assets/grafana_dashboard.png)
+*(Real-time anomaly detection.)*
 
 ## 🧠 Engineering Tradeoffs & Design Decisions
 
-1. **Streaming-First Architecture (Why Not Polling?)**
+### 1. Streaming-First Architecture (Why Not Polling?)
 
-Tradeoff: Simpler REST polling vs higher-complexity streaming.
+**Tradeoff:** Simpler REST polling vs higher-complexity streaming.
+**Decision:** WebSocket + Event Streaming.
+Polling introduces latency spikes and data loss during volatility. A streaming-first model ensures continuous ingestion (800+ events/sec) with predictable latency, critical for capturing flash crashes.
 
-Decision: WebSocket + event streaming.
-Polling introduces latency spikes and data loss during volatility. A streaming-first model ensures continuous ingestion with predictable latency under burst conditions.
+### 2. Redpanda vs Apache Kafka
 
+**Tradeoff:** Ecosystem maturity vs operational efficiency.
+**Decision:** Redpanda.
+Redpanda (C++) offers significantly lower memory footprint than JVM-based Kafka. It allows sustained ingestion on small cloud instances (t3.medium) without OOM risks.
 
+### 3. Decoupling Ingestion from Storage
 
-2. **Redpanda vs Apache Kafka**
+**Tradeoff:** Synchronous writes vs Fault Tolerance.
+**Decision:** Full decoupling via Message Broker.
+The ingest layer never blocks on database availability. Redpanda buffers data during DB maintenance, acting as a shock absorber during market volatility.
 
-Tradeoff: Ecosystem maturity vs operational efficiency.
-
-Decision: Redpanda (Kafka API compatible).
-	•	C++ implementation → significantly lower memory footprint
-	•	No JVM, no Zookeeper → simpler ops on small EC2 instances
-	•	Better fit for cost-constrained, high-throughput pipelines
-
-This allows sustained ingestion (800+ events/sec) on t3.medium / c7i-class instances without OOM risk.
-
-
-
-3. **Decoupling Ingestion from Storage**
-
-Tradeoff: Simpler synchronous writes vs fault tolerance.
-
-Decision: Full decoupling via message broker.
-	•	Ingest layer never blocks on database availability
-	•	Redpanda buffers data during TimescaleDB outages
-	•	Enables zero-downtime maintenance and schema migrations
-
-This design treats the broker as a shock absorber between volatile markets and stateful systems.
-
-
-
-4. **In-Memory Sliding Windows vs Stream Frameworks**
-
-Tradeoff: Spark/Flink vs lightweight Python analytics.
-
-Decision: Python + Deque + Pandas.
-	•	Sub-second latency without cluster overhead
-	•	Easier to audit, debug, and adapt to non-financial domains
-	•	Optimized for real-time signals, not batch analytics
-
-The system favors operational clarity and adaptability over maximal theoretical throughput.
-
-
-
-5. **Cost-Aware Cloud Design**
-
-Constraints: Ukraine-based deployment realities, limited infra budgets.
-
-Optimizations include:
-	•	Strict Docker CPU/memory limits
-	•	Linux swap tuning to avoid burst OOM kills
-	•	Avoidance of JVM-heavy components
-	•	Terraform-managed reproducibility to minimize human error
-
-Result: a production-grade real-time system that remains economically viable.
-
-⸻
-
-## 🚀 Key Features
-	•	Real-Time Anomaly Detection: Flags BTC/ETH correlation divergence >0.5% within 60 seconds.
-	•	Zero-Downtime Reliability: If TimescaleDB is unavailable, the ingest layer continues streaming with Redpanda buffering.
-	•	Instant Alerts: Sends Telegram notifications when a trading signal or anomaly is detected.
-	•	Memory-Efficient: Tuned for smaller AWS instances (c7i, t3.medium) using Linux swap and Docker resource limits.
-
-⸻
-
-## 🛠 Installation & Deployment
-
-Prerequisites
-	•	Docker & Docker Compose
-	•	Terraform (for AWS deployment)
-	•	AWS CLI configured with active credentials
-
-⸻
-
-## 1. Local Setup
-
-
-## Clone the repository
-git clone https://github.com/yourusername/quant-platform.git
-cd quant-platform
-
-## Configure secrets
-cp .env.example .env
-## Add TELEGRAM_TOKEN and CHAT_ID to .env
-
-
-⸻
-
-## 2. Launch the Stack
-
-docker-compose up -d --build
-
-
-⸻
-
-## 3. Initialize the Database
-
-The database schema is automatically provisioned on the first launch via `init.sql`.
-
-To reset the data and re-initialize:
-```bash
-docker-compose down -v
-docker-compose up -d
-```
-⸻
-
-## ☁️ Cloud Deployment (AWS)
-
-Terraform automates provisioning of a reproducible environment.
-
-cd infrastructure/terraform
-
-## Initialize + preview
-terraform init
-terraform plan
-
-## Deploy to eu-central-1
-terraform apply
-
-EC2 instances automatically install Docker and Git via user_data scripts.
-
-⸻
+---
 
 ## 🔮 Future Roadmap (Defense Tech Pivot)
 
-Although optimized for financial streaming, the architecture is domain-agnostic. Upcoming iterations will adapt the pipeline for UAV telemetry and anomaly detection:
-	•	Protocol Swap: Replace Binance WebSocket with MAVLink.
-	•	Logic Update: Substitute arbitrage signals with geofence, battery, and sensor anomaly analytics.
-	•	Hardware Integration: Support for Pixhawk/ArduPilot and hardware-in-the-loop simulation.
+Although optimized for financial streaming, the architecture is **domain-agnostic**. Upcoming iterations will adapt the pipeline for **UAV telemetry**:
 
-⸻
+1. **Protocol Swap:** Replace Binance WebSocket with **MAVLink**.
+2. **Logic Update:** Substitute arbitrage signals with geofence, battery, and vibration anomaly analytics.
+3. **Hardware:** Integration with Pixhawk/ArduPilot for hardware-in-the-loop simulation.
+
+---
+
+## 🛠 Installation
+
+### Prerequisites
+
+* Docker & Docker Compose
+* 4GB RAM recommended
+
+### Quick Start
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/znodanilo2017-byte/quant-stream.git
+cd quant-platform-final
+
+```
+
+
+2. **Start the pipeline:**
+```bash
+docker-compose up -d --build
+
+```
+
+
+3. **Access Grafana:**
+* URL: `http://localhost:3000`
+* Login: `admin` / `password`
+* The dashboard is pre-configured to read from TimescaleDB.
+
+
+
+---
 
 ## 👤 Author
 
-Danylo Yuzefchyk
-Systems Engineer & MLOps Specialist
+**Danylo Yuzefchyk** *Systems Engineer & MLOps Specialist* [LinkedIn](https://www.linkedin.com/in/danylo-yuzefchyk-330413231/) | [GitHub](https://github.com/znodanilo2017-byte)
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License.

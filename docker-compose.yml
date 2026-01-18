@@ -1,6 +1,6 @@
 services:
   redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:v23.3.14
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.5
     container_name: redpanda
     command:
       - redpanda start
@@ -16,10 +16,10 @@ services:
     volumes:
       - redpanda-data:/var/lib/redpanda/data
     healthcheck:
-      test: ["CMD-SHELL", "rpk cluster health --exit-when-healthy --timeout 5s"]
+      test: ["CMD", "rpk", "cluster", "info"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   timescaledb:
     image: timescale/timescaledb:latest-pg15
@@ -64,8 +64,7 @@ services:
       - DB_NAME=${DB_NAME}
     volumes:
       - ./services/processor:/app
-      - ./ml_core/train_model.py:/app/train_model.py
-      - ./ml_core/isolation_forest.pkl:/app/isolation_forest.pkl
+      - ./ml_core/model_v2.pkl:/app/model_v2.pkl
 
   dashboard:
     build: ./dashboard
