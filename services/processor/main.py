@@ -122,9 +122,26 @@ class SmartDetector:
                 return False
 
             features = [[latest['rsi'], latest['volatility'], latest['vol_change']]]
-            prediction = self.model.predict(features)[0]
+            # Отримуємо "сиру" оцінку (score)
+            scores = self.model.decision_function(features)
+            score = scores[0]
+
+            # Виводимо score в логи, щоб ти бачив його (ВАЖЛИВО!)
+            print(f"[DEBUG] Anomaly Score: {score:.4f}")
+
+            # Встановлюємо ручний поріг.
+            # Спробуй 0.05 або навіть 0.1 (чим вище число, тим більше аномалій)
+            # Стандартний поріг моделі зазвичай десь біля 0.0 або від'ємний.
+            # Якщо поставити +0.05, ми будемо вважати аномалією навіть трохи "нормальні" дані.
+            manual_threshold = 0.05 
+
+            if score < manual_threshold:
+                is_anomaly = True
+            else:
+                is_anomaly = False
+
+            return is_anomaly
             
-            return bool(prediction == -1)
 
         except Exception as e:
             print(f"⚠️ Calculation Error: {e}")
