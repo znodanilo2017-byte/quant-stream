@@ -41,5 +41,5 @@ jobs:
 
       - name: Basic health check
         run: |
-          docker inspect --format='{{.State.Running}}' quantstream-ingestor-1
-          docker inspect --format='{{.State.Running}}' quantstream-processor-1
+          docker inspect --format='{{.State.Running}}' quant-stream-ingestor-1
+          docker inspect --format='{{.State.Running}}' quant-stream-processor-1
