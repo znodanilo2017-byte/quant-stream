@@ -64,6 +64,13 @@ graph LR
 
 ---
 
+## ☁️ Cloud Deployment (Azure)
+Deployed on Azure using Terraform (`Standard_D2as_v4`). 
+- **Infrastructure as Code:** Terraform manages Networking, VM, and Security Groups.
+- **CI/CD:** Docker Compose for container orchestration.
+
+---
+
 ## 🧠 The "Brain": Machine Learning Logic
 
 Unlike simple price alerts, QuantStream uses a multi-factor feature vector to detect anomalies.
@@ -124,27 +131,26 @@ Although optimized for financial streaming, the architecture is **domain-agnosti
 
 ### Quick Start
 
-1. **Clone the repository:**
-```bash
-git clone https://github.com/znodanilo2017-byte/quant-stream.git
-cd quant-platform-final
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/znodanilo2017-byte/quant-stream.git](https://github.com/znodanilo2017-byte/quant-stream.git)
+    cd quant-stream
+    ```
 
-```
+2.  **Setup Configuration:**
+    Create the environment file from the example (default settings work out-of-the-box):
+    ```bash
+    cp .env.example .env
+    ```
 
+3.  **Start the pipeline:**
+    ```bash
+    docker-compose up -d --build
+    ```
 
-2. **Start the pipeline:**
-```bash
-docker-compose up -d --build
-
-```
-
-
-3. **Access Grafana:**
-* URL: `http://localhost:3000`
-* Login: `admin` / `password`
-* The dashboard is pre-configured to read from TimescaleDB.
-
-
+4.  **Access Grafana:**
+    * URL: `http://localhost:3000`
+    * Login: `admin` / `password`
 
 ---
 

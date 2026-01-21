@@ -66,15 +66,17 @@ services:
       - ./services/processor:/app
       - ./ml_core/model_v2.pkl:/app/model_v2.pkl
 
-  dashboard:
-    build: ./dashboard
-    ports:
-      - "8501:8501"
-    depends_on:
-      timescaledb:
-        condition: service_healthy
-    environment:
-      - DB_HOST=timescaledb
+# Legacy dashboard service (commented out)
+#
+#  dashboard:
+#    build: ./dashboard
+#    ports:
+#      - "8501:8501"
+#    depends_on:
+#      timescaledb:
+#        condition: service_healthy
+#    environment:
+#      - DB_HOST=timescaledb
 
   grafana:
     image: grafana/grafana-oss:latest
