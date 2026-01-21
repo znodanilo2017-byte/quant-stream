@@ -64,7 +64,6 @@ services:
       - DB_NAME=${DB_NAME}
     volumes:
       - ./services/processor:/app
-      - ./ml_core/model_v2.pkl:/app/model_v2.pkl
 
 # Legacy dashboard service (commented out)
 #
