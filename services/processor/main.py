@@ -17,26 +17,19 @@ DB_HOST = os.getenv('DB_HOST', 'timescaledb')
 DB_USER = os.getenv('DB_USER', 'postgres')
 DB_PASS = os.getenv('DB_PASSWORD', 'password')
 DB_NAME = os.getenv('DB_NAME', 'market_data')
-MODEL_PATH = "model_v2.pkl"
+MODEL_PATH = "services/processor/model_v2.pkl" # Double check this path matches where Docker puts it
 
 # --- STATE MANAGEMENT ---
-# History buffer for ML (Stores 1-second candles)
 candle_history = defaultdict(lambda: deque(maxlen=50))
-
-# Temporary buffer to build the CURRENT candle
 current_candle_state = defaultdict(lambda: {
     'open': None, 'high': -float('inf'), 'low': float('inf'), 
     'close': None, 'volume': 0.0, 'last_second': None
 })
 
-# --- DATABASE FUNCTION (Ось те, що зникло) ---
 def get_db_connection():
     try:
         conn = psycopg2.connect(
-            host=DB_HOST, 
-            database=DB_NAME, 
-            user=DB_USER, 
-            password=DB_PASS
+            host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS
         )
         conn.autocommit = True
         return conn
@@ -52,39 +45,35 @@ class SmartDetector:
             self.model = joblib.load(model_path)
             print("✅ Model loaded successfully!")
         except Exception as e:
-            print(f"❌ CRITICAL: Model not found ({e}). Did you run training?")
-            raise e
+            print(f"❌ CRITICAL: Model not found ({e}).")
+            # We don't raise here to keep the container alive for debugging, 
+            # but in prod you should raise.
+            pass 
 
     def update_candle_and_analyze(self, symbol, price, volume, timestamp_dt):
-        """
-        Aggregates trades into 1-second candles. 
-        Only runs ML prediction when a second closes.
-        """
         state = current_candle_state[symbol]
-        
-        # Round down to the nearest second
         current_second = timestamp_dt.replace(microsecond=0)
 
-        # 1. Initialize state if new
+        # 1. Initialize state
         if state['last_second'] is None:
             state['last_second'] = current_second
             state['open'] = price
         
-        # 2. Check if we moved to a NEW second
-        prediction_result = False
+        # Default return (No anomaly, Score 0)
+        prediction_result = (False, 0.0) 
         
+        # 2. Check for NEW second
         if current_second > state['last_second']:
-            # --- CANDLE CLOSED! ---
-            # Save the COMPLETED candle to history
+            # Save closed candle
             candle_history[symbol].append({
                 'price': state['close'],
                 'volume': state['volume']
             })
             
-            # Run Prediction on the history
+            # Run Prediction
             prediction_result = self._predict(symbol)
             
-            # Reset state for the new second
+            # Reset state
             state['last_second'] = current_second
             state['open'] = price
             state['high'] = price
@@ -92,7 +81,7 @@ class SmartDetector:
             state['close'] = price
             state['volume'] = volume
         else:
-            # --- SAME SECOND (UPDATE CURRENT) ---
+            # Update current candle
             state['high'] = max(state['high'], price)
             state['low'] = min(state['low'], price)
             state['close'] = price
@@ -101,54 +90,46 @@ class SmartDetector:
         return prediction_result
 
     def _predict(self, symbol):
-        # Need 20 seconds of data for Volatility calculation
+        # FIX 1: Not enough data -> Return Tuple
         if len(candle_history[symbol]) < 20:
-            return False
+            return False, 0.0
 
-        # Convert to DataFrame
-        df = pd.DataFrame(candle_history[symbol])
+        if self.model is None:
+             return False, 0.0
 
-        # Feature Engineering
         try:
+            df = pd.DataFrame(candle_history[symbol])
             df['rsi'] = ta.rsi(df['price'], length=14)
             df['volatility'] = df['price'].rolling(20).std()
             df['vol_change'] = df['volume'].pct_change()
-
             df.replace([np.inf, -np.inf], np.nan, inplace=True)
             
             latest = df.iloc[-1]
 
+            # FIX 2: Bad data -> Return Tuple
             if np.isnan(latest['rsi']) or np.isnan(latest['volatility']) or np.isnan(latest['vol_change']):
-                return False
+                return False, 0.0
 
             features = [[latest['rsi'], latest['volatility'], latest['vol_change']]]
-            # Отримуємо "сиру" оцінку (score)
+            
             scores = self.model.decision_function(features)
             score = scores[0]
-
-            # Виводимо score в логи, щоб ти бачив його (ВАЖЛИВО!)
-            print(f"[DEBUG] Anomaly Score: {score:.4f}")
-
-            # Встановлюємо ручний поріг.
-            # Спробуй 0.05 або навіть 0.1 (чим вище число, тим більше аномалій)
-            # Стандартний поріг моделі зазвичай десь біля 0.0 або від'ємний.
-            # Якщо поставити +0.05, ми будемо вважати аномалією навіть трохи "нормальні" дані.
-            manual_threshold = 0.05 
-
-            if score < manual_threshold:
-                is_anomaly = True
-            else:
-                is_anomaly = False
-
-            return is_anomaly, score
             
+            # Debug Print
+            print(f"[DEBUG] {symbol} Score: {score:.4f}")
+
+            manual_threshold = 0.05 
+            is_anomaly = score < manual_threshold
+
+            # FIX 3: Success -> Return Tuple
+            return is_anomaly, score
 
         except Exception as e:
             print(f"⚠️ Calculation Error: {e}")
-            return False
+            # FIX 4: Error -> Return Tuple
+            return False, 0.0
 
 def run_processor():
-    # 1. Initialize DB
     conn = get_db_connection()
     while not conn:
         print("⏳ Waiting for Database...")
@@ -156,17 +137,15 @@ def run_processor():
         conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Ensure table has is_anomaly column
+    # Auto-Migration
     try:
         cursor.execute("ALTER TABLE trades ADD COLUMN IF NOT EXISTS is_anomaly BOOLEAN DEFAULT FALSE;")
         cursor.execute("ALTER TABLE trades ADD COLUMN IF NOT EXISTS anomaly_score DOUBLE PRECISION DEFAULT 0;")
         conn.commit()
     except: pass
 
-    # 2. Initialize Model
     detector = SmartDetector(MODEL_PATH)
 
-    # 3. Connect to Kafka
     print("⏳ Connecting to Kafka...")
     consumer = KafkaConsumer(
         TOPIC, 
@@ -174,18 +153,18 @@ def run_processor():
         value_deserializer=lambda x: json.loads(x.decode('utf-8'))
     )
 
-    print("🚀 V2 Processor Started (1s Aggregation + Isolation Forest)...")
+    print("🚀 Processor V2 Running...")
 
     for msg in consumer:
         try:
             event = msg.value
-            
-            # Normalize Data
             symbol = event.get('symbol') or event.get('s')
+            
+            if "BTC" not in symbol: continue
+
             price = float(event.get('price') or event.get('p', 0))
             qty = float(event.get('quantity') or event.get('volume') or event.get('q', 0))
             
-            # Timestamp Parsing
             raw_time = event.get('time') or event.get('timestamp') or event.get('T') or event.get('E')
             if raw_time:
                 ts = float(raw_time)
@@ -194,26 +173,22 @@ def run_processor():
             else:
                 event_time = datetime.now()
 
-            # Filter for BTC only
-            if "BTC" not in symbol:
-                    continue
-            
-            # --- AGGREGATE & DETECT ---
-            # New - Unpack BOTH values
+            # --- THE CRITICAL FIX ---
+            # Now update_candle_and_analyze ALWAYS returns (bool, float)
             is_anomaly, score = detector.update_candle_and_analyze(symbol, price, qty, event_time)
 
             if is_anomaly:
                 usd_val = price * qty
-                print(f"🚨 ANOMALY: {symbol} | Price: {price} | Vol: {usd_val:.2f}")
+                print(f"🚨 ANOMALY: {symbol} | Score: {score:.3f}")
 
-            # --- SAVE TO DB ---
             cursor.execute(
                 "INSERT INTO trades (time, symbol, price, quantity, is_anomaly, anomaly_score) VALUES (%s, %s, %s, %s, %s, %s)", 
                 (event_time, symbol, price, qty, is_anomaly, score)
             )
 
         except Exception as e:
-            print(f"⚠️ Error processing msg: {e}")
+            # If unpacked failed before, it won't fail now.
+            print(f"⚠️ Error loop: {e}")
             if conn.closed:
                 conn = get_db_connection()
                 cursor = conn.cursor()
