@@ -7,7 +7,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)
 ![Status](https://img.shields.io/badge/Status-Operational_Prototype-success?style=for-the-badge)
 
-> **High-frequency anomaly detection pipeline processing cryptocurrency trades in real-time using Unsupervised Machine Learning.**
+> **Real-time market anomaly detection and surveillance system processing cryptocurrency trades in real-time using Unsupervised Machine Learning.**
 
 ---
 
@@ -112,13 +112,12 @@ The ingest layer never blocks on database availability. Redpanda buffers data du
 
 ---
 
-## 🔮 Future Roadmap (Defense Tech Pivot)
+⚠️ Limitations & Failure Modes:
 
-Although optimized for financial streaming, the architecture is **domain-agnostic**. Upcoming iterations will adapt the pipeline for **UAV telemetry**:
-
-1. **Protocol Swap:** Replace Binance WebSocket with **MAVLink**.
-2. **Logic Update:** Substitute arbitrage signals with geofence, battery, and vibration anomaly analytics.
-3. **Hardware:** Integration with Pixhawk/ArduPilot for hardware-in-the-loop simulation.
+	•	Sensitivity to regime changes (model trained on one volatility regime)
+	•	False positives during news-driven volume spikes
+	•	RSI instability at low trade counts
+	•	Concept drift in prolonged trending markets
 
 ---
 
@@ -156,7 +155,7 @@ Although optimized for financial streaming, the architecture is **domain-agnosti
 
 ## 👤 Author
 
-**Danylo Yuzefchyk** *Systems Engineer & MLOps Specialist* [LinkedIn](https://www.linkedin.com/in/danylo-yuzefchyk-330413231/) | [GitHub](https://github.com/znodanilo2017-byte)
+**Danylo Yuzefchyk** *Data Engineer / Quantitative Analyst* [LinkedIn](https://www.linkedin.com/in/danylo-yuzefchyk-330413231/) | [GitHub](https://github.com/znodanilo2017-byte)
 
 ---
 

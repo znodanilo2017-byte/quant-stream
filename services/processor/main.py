@@ -197,7 +197,8 @@ def run_processor():
                     continue
             
             # --- AGGREGATE & DETECT ---
-            is_anomaly = detector.update_candle_and_analyze(symbol, price, qty, event_time)
+            # New - Unpack BOTH values
+            is_anomaly, score = detector.update_candle_and_analyze(symbol, price, qty, event_time)
 
             if is_anomaly:
                 usd_val = price * qty
@@ -205,8 +206,8 @@ def run_processor():
 
             # --- SAVE TO DB ---
             cursor.execute(
-                "INSERT INTO trades (time, symbol, price, quantity, is_anomaly) VALUES (%s, %s, %s, %s, %s)", 
-                (event_time, symbol, price, qty, is_anomaly)
+                "INSERT INTO trades (time, symbol, price, quantity, is_anomaly, anomaly_score) VALUES (%s, %s, %s, %s, %s, %s)", 
+                (event_time, symbol, price, qty, is_anomaly, score)
             )
 
         except Exception as e:
