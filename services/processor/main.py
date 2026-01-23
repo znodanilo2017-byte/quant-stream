@@ -44,6 +44,105 @@ def get_db_connection():
 class SmartDetector:
     def __init__(self, model_path):
         self.model = None
+        # STATE: We add 'last_score' and 'last_anomaly' to memory
+        self.last_results = defaultdict(lambda: {'score': 0.0, 'is_anomaly': False})
+        
+        print(f"🧠 Loading V2 ML Model from {model_path}...")
+        try:
+            self.model = joblib.load(model_path)
+            print("✅ Model loaded successfully!")
+        except Exception as e:
+            print(f"❌ CRITICAL: Model not found ({e}).")
+            pass 
+
+    def update_candle_and_analyze(self, symbol, price, volume, timestamp_dt):
+        state = current_candle_state[symbol]
+        current_second = timestamp_dt.replace(microsecond=0)
+
+        # 1. Initialize state for new symbols
+        if state['last_second'] is None:
+            state['last_second'] = current_second
+            state['open'] = price
+        
+        # 2. Check for NEW second (The Trigger)
+        if current_second > state['last_second']:
+            # A. Save the CLOSED candle to history
+            candle_history[symbol].append({
+                'price': state['close'],
+                'volume': state['volume']
+            })
+            
+            # B. Run Prediction (Expensive Math)
+            is_anomaly, score = self._predict(symbol)
+            
+            # C. UPDATE MEMORY (Make it Sticky!)
+            self.last_results[symbol]['score'] = score
+            self.last_results[symbol]['is_anomaly'] = is_anomaly
+            
+            # D. Reset candle state for the new second
+            state['last_second'] = current_second
+            state['open'] = price
+            state['high'] = price
+            state['low'] = price
+            state['close'] = price
+            state['volume'] = volume
+            
+            # Debug: Print even normal scores so we know it's alive
+            print(f"📉 {symbol} Tick | Score: {score:.4f} | Anomaly: {is_anomaly}")
+
+        else:
+            # Update current candle (High/Low/Vol)
+            state['high'] = max(state['high'], price)
+            state['low'] = min(state['low'], price)
+            state['close'] = price
+            state['volume'] += volume
+
+        # 3. RETURN STICKY RESULT
+        # Instead of returning (False, 0), we return the last known truth
+        return self.last_results[symbol]['is_anomaly'], self.last_results[symbol]['score']
+
+    def _predict(self, symbol):
+        # 1. Not enough data? Return Neutral Score (e.g. 0.5 is usually "Safe")
+        if len(candle_history[symbol]) < 20:
+            return False, 0.5 
+
+        if self.model is None:
+             return False, 0.5
+
+        try:
+            df = pd.DataFrame(candle_history[symbol])
+            
+            # Technical Analysis
+            df['rsi'] = ta.rsi(df['price'], length=14)
+            df['volatility'] = df['price'].rolling(20).std()
+            df['vol_change'] = df['volume'].pct_change()
+            df.replace([np.inf, -np.inf], np.nan, inplace=True)
+            
+            latest = df.iloc[-1]
+
+            if np.isnan(latest['rsi']) or np.isnan(latest['volatility']) or np.isnan(latest['vol_change']):
+                return False, 0.5
+
+            features = [[latest['rsi'], latest['volatility'], latest['vol_change']]]
+            
+            # Get the raw score
+            scores = self.model.decision_function(features)
+            score = scores[0]
+
+            # THRESHOLD LOGIC
+            # score < 0 is standard anomaly. 
+            # score < 0.05 is "Sensitive Mode" (Alerts on weak signals too)
+            manual_threshold = 0.00 
+            is_anomaly = score < manual_threshold
+
+            return is_anomaly, score
+
+        except Exception as e:
+            print(f"⚠️ Calculation Error: {e}")
+            return False, 0.5
+        
+    def __init__(self, model_path):
+        self.model = None
         print(f"🧠 Loading V2 ML Model from {model_path}...")
         try:
             self.model = joblib.load(model_path)
