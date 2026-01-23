@@ -140,7 +140,7 @@ class SmartDetector:
             else:
                 is_anomaly = False
 
-            return is_anomaly
+            return is_anomaly, score
             
 
         except Exception as e:
@@ -159,6 +159,8 @@ def run_processor():
     # Ensure table has is_anomaly column
     try:
         cursor.execute("ALTER TABLE trades ADD COLUMN IF NOT EXISTS is_anomaly BOOLEAN DEFAULT FALSE;")
+        cursor.execute("ALTER TABLE trades ADD COLUMN IF NOT EXISTS anomaly_score DOUBLE PRECISION DEFAULT 0;")
+        conn.commit()
     except: pass
 
     # 2. Initialize Model
