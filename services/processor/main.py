@@ -17,7 +17,11 @@ DB_HOST = os.getenv('DB_HOST', 'timescaledb')
 DB_USER = os.getenv('DB_USER', 'postgres')
 DB_PASS = os.getenv('DB_PASSWORD', 'password')
 DB_NAME = os.getenv('DB_NAME', 'market_data')
-MODEL_PATH = "services/processor/model_v2.pkl" # Double check this path matches where Docker puts it
+# Get the directory where main.py is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Look for the model in the same folder
+MODEL_PATH = os.path.join(BASE_DIR, "model_v2.pkl")
+ # Double check this path matches where Docker puts it
 
 # --- STATE MANAGEMENT ---
 candle_history = defaultdict(lambda: deque(maxlen=50))
