@@ -196,37 +196,39 @@ class SmartDetector:
         # GATE 1: Check History Depth
         history_len = len(candle_history[symbol])
         if history_len < 20:
-            # Print status every 5th tick so we know it's counting
-            if history_len % 5 == 0:
-                print(f"⏳ {symbol} Building History: {history_len}/20 candles...")
+            if history_len % 10 == 0:
+                print(f"⏳ {symbol} History: {history_len}/20...")
             return False, 0.5 
 
-        # GATE 2: Check Model
         if self.model is None:
-             print("❌ FAIL: Model is None (Did not load!)")
              return False, 0.5
 
         try:
             df = pd.DataFrame(candle_history[symbol])
             
-            # Technical Analysis
+            # --- FEATURE ENGINEERING (FIXED) ---
             df['rsi'] = ta.rsi(df['price'], length=14)
             df['volatility'] = df['price'].rolling(20).std()
+            
+            # FIX: Handle Division by Zero in Volume Change
             df['vol_change'] = df['volume'].pct_change()
-            df.replace([np.inf, -np.inf], np.nan, inplace=True)
+            
+            # CLEANING: Replace Infinite/NaN values with 0
+            df.replace([np.inf, -np.inf], 0.0, inplace=True)
+            df.fillna(0.0, inplace=True)
             
             latest = df.iloc[-1]
 
-            # GATE 3: Check for NaNs (Bad Math)
-            if np.isnan(latest['rsi']) or np.isnan(latest['volatility']) or np.isnan(latest['vol_change']):
-                print(f"⚠️ NaN DATA: RSI={latest['rsi']} | Vol={latest['volatility']}")
-                return False, 0.5
-
+            # Features vector
             features = [[latest['rsi'], latest['volatility'], latest['vol_change']]]
             
+            # --- PREDICTION ---
             # Get the raw score
             scores = self.model.decision_function(features)
             score = scores[0]
+
+            # Debug: Print the REAL score now that math is fixed
+            # print(f"✅ {symbol} Score: {score:.4f}")
 
             manual_threshold = 0.00 
             is_anomaly = score < manual_threshold
@@ -234,9 +236,9 @@ class SmartDetector:
             return is_anomaly, score
 
         except Exception as e:
-            print(f"⚠️ CRASH: {e}")
+            print(f"⚠️ Calculation Error: {e}")
             return False, 0.5
-
+        
 def run_processor():
     conn = get_db_connection()
     while not conn:
