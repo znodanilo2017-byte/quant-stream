@@ -17,10 +17,11 @@ DB_HOST = os.getenv('DB_HOST', 'timescaledb')
 DB_USER = os.getenv('DB_USER', 'postgres')
 DB_PASS = os.getenv('DB_PASSWORD', 'password')
 DB_NAME = os.getenv('DB_NAME', 'market_data')
-
-# Get the directory where main.py is located to find the model reliably
+# Get the directory where main.py is located
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Look for the model in the same folder
 MODEL_PATH = os.path.join(BASE_DIR, "model_v2.pkl")
+ # Double check this path matches where Docker puts it
 
 # --- STATE MANAGEMENT ---
 candle_history = defaultdict(lambda: deque(maxlen=50))
@@ -43,8 +44,8 @@ def get_db_connection():
 class SmartDetector:
     def __init__(self, model_path):
         self.model = None
-        # MEMORY: Stores the last known score so we don't return 0.0 between seconds
-        self.last_results = defaultdict(lambda: {'score': 0.5, 'is_anomaly': False})
+        # STATE: We add 'last_score' and 'last_anomaly' to memory
+        self.last_results = defaultdict(lambda: {'score': 0.0, 'is_anomaly': False})
         
         print(f"🧠 Loading V2 ML Model from {model_path}...")
         try:
@@ -63,7 +64,7 @@ class SmartDetector:
             state['last_second'] = current_second
             state['open'] = price
         
-        # 2. Check for NEW second
+        # 2. Check for NEW second (The Trigger)
         if current_second > state['last_second']:
             # A. Save the CLOSED candle to history
             candle_history[symbol].append({
@@ -71,23 +72,23 @@ class SmartDetector:
                 'volume': state['volume']
             })
             
-            # B. Run Prediction
+            # B. Run Prediction (Expensive Math)
             is_anomaly, score = self._predict(symbol)
             
             # C. UPDATE MEMORY (Make it Sticky!)
             self.last_results[symbol]['score'] = score
             self.last_results[symbol]['is_anomaly'] = is_anomaly
             
-            # Debug: Prove it's working
-            print(f"📉 {symbol} Tick | Score: {score:.4f} | Anomaly: {is_anomaly}")
-
-            # Reset candle state for the new second
+            # D. Reset candle state for the new second
             state['last_second'] = current_second
             state['open'] = price
             state['high'] = price
             state['low'] = price
             state['close'] = price
             state['volume'] = volume
+            
+            # Debug: Print even normal scores so we know it's alive
+            print(f"📉 {symbol} Tick | Score: {score:.4f} | Anomaly: {is_anomaly}")
 
         else:
             # Update current candle (High/Low/Vol)
@@ -96,12 +97,12 @@ class SmartDetector:
             state['close'] = price
             state['volume'] += volume
 
-        # 3. RETURN STICKY RESULT (Crucial for Grafana)
-        # Returns the last known score instead of 0.0
+        # 3. RETURN STICKY RESULT
+        # Instead of returning (False, 0), we return the last known truth
         return self.last_results[symbol]['is_anomaly'], self.last_results[symbol]['score']
 
     def _predict(self, symbol):
-        # Default "Safe" Score is 0.5 (Neutral), not 0.0 (which looks like anomaly)
+        # 1. Not enough data? Return Neutral Score (e.g. 0.5 is usually "Safe")
         if len(candle_history[symbol]) < 20:
             return False, 0.5 
 
@@ -119,7 +120,6 @@ class SmartDetector:
             
             latest = df.iloc[-1]
 
-            # NaN Check
             if np.isnan(latest['rsi']) or np.isnan(latest['volatility']) or np.isnan(latest['vol_change']):
                 return False, 0.5
 
@@ -130,6 +130,8 @@ class SmartDetector:
             score = scores[0]
 
             # THRESHOLD LOGIC
+            # score < 0 is standard anomaly. 
+            # score < 0.05 is "Sensitive Mode" (Alerts on weak signals too)
             manual_threshold = 0.00 
             is_anomaly = score < manual_threshold
 
@@ -137,6 +139,102 @@ class SmartDetector:
 
         except Exception as e:
             print(f"⚠️ Calculation Error: {e}")
+            return False, 0.5
+        
+    def __init__(self, model_path):
+        self.model = None
+        print(f"🧠 Loading V2 ML Model from {model_path}...")
+        try:
+            self.model = joblib.load(model_path)
+            print("✅ Model loaded successfully!")
+        except Exception as e:
+            print(f"❌ CRITICAL: Model not found ({e}).")
+            # We don't raise here to keep the container alive for debugging, 
+            # but in prod you should raise.
+            pass 
+
+    def update_candle_and_analyze(self, symbol, price, volume, timestamp_dt):
+        state = current_candle_state[symbol]
+        current_second = timestamp_dt.replace(microsecond=0)
+
+        # 1. Initialize state
+        if state['last_second'] is None:
+            state['last_second'] = current_second
+            state['open'] = price
+        
+        # Default return (No anomaly, Score 0)
+        prediction_result = (False, 0.0) 
+        
+        # 2. Check for NEW second
+        if current_second > state['last_second']:
+            # Save closed candle
+            candle_history[symbol].append({
+                'price': state['close'],
+                'volume': state['volume']
+            })
+            
+            # Run Prediction
+            prediction_result = self._predict(symbol)
+            
+            # Reset state
+            state['last_second'] = current_second
+            state['open'] = price
+            state['high'] = price
+            state['low'] = price
+            state['close'] = price
+            state['volume'] = volume
+        else:
+            # Update current candle
+            state['high'] = max(state['high'], price)
+            state['low'] = min(state['low'], price)
+            state['close'] = price
+            state['volume'] += volume
+
+        return prediction_result
+
+    def _predict(self, symbol):
+        # GATE 1: Check History Depth
+        history_len = len(candle_history[symbol])
+        if history_len < 20:
+            # Print status every 5th tick so we know it's counting
+            if history_len % 5 == 0:
+                print(f"⏳ {symbol} Building History: {history_len}/20 candles...")
+            return False, 0.5 
+
+        # GATE 2: Check Model
+        if self.model is None:
+             print("❌ FAIL: Model is None (Did not load!)")
+             return False, 0.5
+
+        try:
+            df = pd.DataFrame(candle_history[symbol])
+            
+            # Technical Analysis
+            df['rsi'] = ta.rsi(df['price'], length=14)
+            df['volatility'] = df['price'].rolling(20).std()
+            df['vol_change'] = df['volume'].pct_change()
+            df.replace([np.inf, -np.inf], np.nan, inplace=True)
+            
+            latest = df.iloc[-1]
+
+            # GATE 3: Check for NaNs (Bad Math)
+            if np.isnan(latest['rsi']) or np.isnan(latest['volatility']) or np.isnan(latest['vol_change']):
+                print(f"⚠️ NaN DATA: RSI={latest['rsi']} | Vol={latest['volatility']}")
+                return False, 0.5
+
+            features = [[latest['rsi'], latest['volatility'], latest['vol_change']]]
+            
+            # Get the raw score
+            scores = self.model.decision_function(features)
+            score = scores[0]
+
+            manual_threshold = 0.00 
+            is_anomaly = score < manual_threshold
+
+            return is_anomaly, score
+
+        except Exception as e:
+            print(f"⚠️ CRASH: {e}")
             return False, 0.5
 
 def run_processor():
@@ -163,7 +261,7 @@ def run_processor():
         value_deserializer=lambda x: json.loads(x.decode('utf-8'))
     )
 
-    print("🚀 Processor V2 Running (Sticky Memory Mode)...")
+    print("🚀 Processor V2 Running...")
 
     for msg in consumer:
         try:
@@ -183,19 +281,21 @@ def run_processor():
             else:
                 event_time = datetime.now()
 
-            # --- PREDICTION ---
+            # --- THE CRITICAL FIX ---
+            # Now update_candle_and_analyze ALWAYS returns (bool, float)
             is_anomaly, score = detector.update_candle_and_analyze(symbol, price, qty, event_time)
 
             if is_anomaly:
+                usd_val = price * qty
                 print(f"🚨 ANOMALY: {symbol} | Score: {score:.3f}")
 
-            # --- SAVE TO DB ---
             cursor.execute(
                 "INSERT INTO trades (time, symbol, price, quantity, is_anomaly, anomaly_score) VALUES (%s, %s, %s, %s, %s, %s)", 
                 (event_time, symbol, price, qty, is_anomaly, score)
             )
 
         except Exception as e:
+            # If unpacked failed before, it won't fail now.
             print(f"⚠️ Error loop: {e}")
             if conn.closed:
                 conn = get_db_connection()
