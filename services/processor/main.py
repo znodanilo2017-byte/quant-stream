@@ -206,7 +206,7 @@ class SmartDetector:
         try:
             df = pd.DataFrame(candle_history[symbol])
             
-            # --- FEATURE ENGINEERING (FIXED) ---
+            # --- FEATURE ENGINEERING ---
             df['rsi'] = ta.rsi(df['price'], length=14)
             df['volatility'] = df['price'].rolling(20).std()
             
@@ -223,22 +223,19 @@ class SmartDetector:
             features = [[latest['rsi'], latest['volatility'], latest['vol_change']]]
             
             # --- PREDICTION ---
-            # Get the raw score
             scores = self.model.decision_function(features)
             score = scores[0]
-
-            # Debug: Print the REAL score now that math is fixed
-            # print(f"✅ {symbol} Score: {score:.4f}")
 
             manual_threshold = 0.00 
             is_anomaly = score < manual_threshold
 
-            return is_anomaly, score
+            # --- THE FINAL FIX: Convert numpy.bool to python bool ---
+            return bool(is_anomaly), float(score)
 
         except Exception as e:
             print(f"⚠️ Calculation Error: {e}")
             return False, 0.5
-        
+            
 def run_processor():
     conn = get_db_connection()
     while not conn:
