@@ -4,10 +4,12 @@ services:
     container_name: redpanda
     command:
       - redpanda start
-      - --smp 1 
-      - --memory 512M
+      - --smp 1
+      - --memory 1G
       - --reserve-memory 0M
       - --overprovisioned
+      - --node-id 0
+      - --check=false
       - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
       - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
     ports:
@@ -16,41 +18,44 @@ services:
     volumes:
       - redpanda-data:/var/lib/redpanda/data
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "info"]
+      test: ["CMD", "rpk", "cluster", "health"] # The better healthcheck
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
 
   timescaledb:
-    image: timescale/timescaledb:latest-pg15
+    image: timescale/timescaledb:2.26.3-pg15
     container_name: timescaledb
     environment:
-      - POSTGRES_USER=${DB_USER}          
-      - POSTGRES_PASSWORD=${DB_PASSWORD}  # <--- Магія тут
-      - POSTGRES_DB=${DB_NAME}          # <--- І тут
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
     ports:
       - 5432:5432
     volumes:
-     # 1. This keeps your data safe if container restarts
       - timescale-data:/var/lib/postgresql/data
-      # Maps your local file to the container's startup folder
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   ingestor:
-    build: ./services/ingestor
+    build: ./services/ingestor/crypto_ingestor
+    container_name: rust_ingestor
+    restart: unless-stopped
     depends_on:
       redpanda:
         condition: service_healthy
     environment:
+      - WS_URL=wss://stream.binance.com:9443/stream?streams=btcusdt@trade/ethusdt@trade
       - KAFKA_BROKER=redpanda:9092
 
   processor:
     build: ./services/processor
+    container_name: zscore_processor
+    restart: unless-stopped
     depends_on:
       redpanda:
         condition: service_healthy
@@ -58,38 +63,40 @@ services:
         condition: service_healthy
     environment:
       - KAFKA_BROKER=redpanda:9092
+      - KAFKA_TOPIC=market_data
       - DB_HOST=timescaledb
+      - DB_PORT=5432
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
+      - ROLLING_WINDOW=100
+      - Z_SCORE_THRESHOLD=3.0
     volumes:
       - ./services/processor:/app
 
-# Legacy dashboard service (commented out)
-#
-#  dashboard:
-#    build: ./dashboard
-#    ports:
-#      - "8501:8501"
-#    depends_on:
-#      timescaledb:
-#        condition: service_healthy
-#    environment:
-#      - DB_HOST=timescaledb
-
   grafana:
-    image: grafana/grafana-oss:latest
+    image: grafana/grafana-oss:11.0.0
     container_name: grafana
     ports:
       - "3000:3000"
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_PASSWORD} # <--- І тут  # Пароль для входу
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_PASSWORD}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
     depends_on:
       timescaledb:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/health >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
 volumes:
   redpanda-data:

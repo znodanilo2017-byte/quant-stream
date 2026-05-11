@@ -21,11 +21,16 @@ var.tfvars
 
 # --- IDE/OS ---
 .DS_Store
+._*
 .vscode/
 .idea/
 
 # Data Science & Models
 *.csv
 *.joblib
+*.pkl
 data/
 models/
+
+# --- Rust ---
+target/

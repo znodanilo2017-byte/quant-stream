@@ -4,7 +4,8 @@ import pandas_ta as ta
 from sklearn.ensemble import IsolationForest
 import joblib
 
-CSV_FILE = "ml_core/BTCUSDT-trades-2025-12.csv" # Path to your CSV file
+# Offline experimentation only. This model is not part of the supported runtime path.
+CSV_FILE = "ml_core/BTCUSDT-trades-2025-12.csv"
 
 print("⏳ Loading CSV (This might take a minute)...")
 # OPTIMIZATION: engine='pyarrow' is faster for large CSVs if installed, 

@@ -1,3 +1,9 @@
+/*
+Legacy AWS reference only.
+This Terraform root is not part of the active QuantStream deployment flow.
+The supported infrastructure path is local Docker Compose plus Azure VM deployment.
+*/
+
 provider "aws" {
   region = "eu-central-1" # Frankfurt (Good for Ukraine)
 }
@@ -5,7 +11,7 @@ provider "aws" {
 # 1. Security Group (The Firewall)
 resource "aws_security_group" "drone_sg" {
   name        = "drone-command-center-sg"
-  description = "Allow SSH and Streamlit"
+  description = "Legacy security group for the archived AWS deployment"
 
   # SSH Access (Change 0.0.0.0/0 to your IP for safety if you want)
   ingress {
@@ -15,7 +21,7 @@ resource "aws_security_group" "drone_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Streamlit Dashboard Access
+  # Legacy dashboard access retained for archival reference
   ingress {
     from_port   = 8501
     to_port     = 8501

@@ -1,164 +1,183 @@
+# QuantStream
 
-# ⚡ QuantStream: Real-Time Streaming Analytics for Crypto Markets
+QuantStream is a real-time crypto anomaly-monitoring demo built around a simple, explainable streaming pipeline:
 
-![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python)
-![Redpanda](https://img.shields.io/badge/Redpanda-Kafka-orange?style=for-the-badge&logo=apachekafka)
-![TimescaleDB](https://img.shields.io/badge/TimescaleDB-PostgreSQL-green?style=for-the-badge&logo=postgresql)
-![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker)
-![Status](https://img.shields.io/badge/Status-Operational_Prototype-success?style=for-the-badge)
+- Rust ingests live Binance trades
+- Redpanda carries normalized events
+- Python applies rolling z-score anomaly detection
+- TimescaleDB stores raw trades and anomaly events
+- Grafana presents the official dashboard output
 
-> **Real-time market anomaly detection and surveillance system processing cryptocurrency trades in real-time using Unsupervised Machine Learning.**
+The goal of the final version is clarity and reproducibility, not model complexity.
 
----
-
-### 🔄 Project Evolution: v1.0 vs v2.0
-This repository documents the evolution of a quantitative engine from a rule-based arbitrage bot to an AI-powered surveillance system.
-
-| Feature | **v1.0 (Legacy)** | **v2.0 (Current)** |
-| :--- | :--- | :--- |
-| **Objective** | Statistical Arbitrage (Pair Trading) | Anomaly Detection (Market Surveillance) |
-| **Logic** | Static Thresholds (`if spread > 0.5%`) | Unsupervised Learning (`IsolationForest`) |
-| **Scope** | Multi-Asset Correlation (BTC vs ETH) | Single-Asset Microstructure (BTC) |
-| **UI** | Streamlit (Tightly coupled to spread logic) | **Grafana (Streaming-native, anomaly-only)** |
-
-👉 **[Click here to view the v1.0 Release (Arbitrage Engine)](https://github.com/znodanilo2017-byte/quant-stream/releases/tag/v1.0-arbitrage)**
-
----
-
-## 📉 Project Overview
-“The system is designed to run on a single low-memory cloud instance and sustain ~800 events/sec without backpressure.”
-
-Traditional market alerts rely on static thresholds (e.g., "Alert if price > $100k"). **QuantStream** takes a quantitative approach using the **"Smart Pipes, Dumb Endpoints"** philosophy.
-
-It ingests real-time trade data from Binance, streams it through **Redpanda**, and analyzes market structure using an **Isolation Forest** model. The system detects sudden liquidity injections, flash crashes, and market microstructure anomalies by analyzing volatility, RSI, and volume momentum—not just raw price.
-
-### Key Features
-* **Real-time Ingestion:** Websocket connection to Binance AggTrades (<100ms latency).
-* **Event Streaming:** Decoupled architecture using **Redpanda** (Kafka-compatible).
-* **ML Engine:** Stateful `IsolationForest` model calculating technical indicators on-the-fly (RSI-14, Volatility-20).
-* **Time-Series Storage:** Optimized storage with **TimescaleDB** (PostgreSQL).
-* **Visualization:** Live **Grafana** dashboard for anomaly monitoring.
-
----
-
-## 🏗 Architecture
-
-The system follows a microservices event-driven architecture:
+## Final Runtime Story
+The supported runtime path is:
 
 ```mermaid
-graph LR
-    A[Binance API] -->|WebSocket| B(Ingestor Service)
-    B -->|JSON Events| C{Redpanda / Kafka}
-    C -->|Stream| D[ML Processor]
-    D -->|Stateful Analysis| D
-    D -->|Anomalies Only| E[(TimescaleDB)]
-    E -->|SQL Queries| F[Grafana Dashboard]
-
+flowchart LR
+    Binance[BinanceWebSocket] --> RustIngestor[RustIngestor]
+    RustIngestor --> Redpanda[Redpanda]
+    Redpanda --> PyProcessor[ZScoreProcessor]
+    PyProcessor --> Timescale[TimescaleDB]
+    Timescale --> Grafana[Grafana]
+    MLResearch[MLResearchOffline] -. archived_or_experimental .-> PyProcessor
 ```
 
-1. **Ingestor:** Python service that connects to Binance WebSocket and pushes raw trades to Redpanda.
-2. **Redpanda:** Acts as the high-throughput message bus, buffering data for the processor.
-3. **ML Processor:** The "Brain". It maintains a rolling window of market data in memory (Deque) to calculate features and runs inference.
-4. **TimescaleDB:** Stores trade history and flagged anomalies efficiently using hypertables.
-5. **Grafana:** Visualizes the price action and highlights detected anomalies with red markers.
+Each component has one job:
 
----
+1. `services/ingestor/crypto_ingestor` connects to Binance and publishes normalized trade events to `market_data`.
+2. `services/processor/processor.py` consumes those events, stores every trade, computes rolling z-scores per symbol, and persists anomaly records.
+3. `init.sql` creates the `trades` and `anomalies` hypertables used by the runtime.
+4. `grafana/provisioning` provisions the datasource and dashboard automatically on startup.
 
-## ☁️ Cloud Deployment (Azure)
-Deployed on Azure using Terraform (`Standard_D2as_v4`). 
-- **Infrastructure as Code:** Terraform manages Networking, VM, and Security Groups.
-- **CI/CD:** Docker Compose for container orchestration.
+## What The System Outputs
+Grafana is the official output of the project. The provisioned dashboard shows:
 
----
+- live trade price by symbol
+- rolling volume by symbol
+- anomaly counts and max absolute z-score
+- recent anomaly events with timestamp, symbol, price, and z-score
+- simple pipeline health metrics such as recent event throughput and active symbols
 
-## 🧠 The "Brain": Machine Learning Logic
+This keeps the demo focused on an explainable detection pipeline rather than an overstated ML claim.
 
-Unlike simple price alerts, QuantStream uses a multi-factor feature vector to detect anomalies.
+## What This Demonstrates
+- resilient market-data ingestion from a live websocket source into an event bus
+- decoupled streaming analytics with a transparent z-score detector
+- time-series persistence optimized for Grafana queries
+- infrastructure and dashboards defined in-repo for reproducible demos
 
-**The Feature Vector:**
-$$ X = [RSI_{14}, Volatility_{20}, VolumeChange] $$
+## Why Z-Score
+The production processor uses rolling z-score anomaly detection because it is:
 
-* **RSI (Relative Strength Index):** Detects overbought/oversold conditions.
-* **Volatility (Rolling StdDev):** Detects abnormal market stress.
-* **Volume Momentum:** Detects sudden large-scale execution orders.
+- easy to explain in an interview or portfolio walkthrough
+- cheap to run in a streaming loop
+- straightforward to validate in Grafana
+- more honest than presenting incomplete live ML inference as production-ready
 
-The model uses **Isolation Forest**, an unsupervised learning algorithm trained on historical Binance data. It isolates anomalies rather than profiling normal data points.
+An event is flagged when the latest trade price deviates from the rolling mean by at least the configured threshold.
 
----
+## ML Status
+Machine learning is not part of the supported production pipeline.
 
-## 📸 Demo
-![Grafana monitor](assets/grafana_dashboard.png)
-*(Real-time anomaly detection.)*
+The remaining code in `ml_core/` is kept as offline experimentation and historical research. It documents earlier work on unsupervised anomaly detection, but the final portfolio version standardizes on the simpler z-score processor because it is fully wired, reproducible, and easier to reason about in changing crypto market regimes.
 
-## 🧠 Engineering Tradeoffs & Design Decisions
+## Migration Notes
+This repo went through a few architecture shifts before reaching the final shape:
 
-### 1. Streaming-First Architecture (Why Not Polling?)
+- Python ingestor was replaced by the Rust ingestor
+- multiple Python processor variants were collapsed into one canonical z-score processor
+- ML runtime ideas were removed from the supported live path and kept as offline experimentation
+- AWS Terraform was retained only as legacy reference; Azure is the active infrastructure direction
+- the Streamlit-era dashboard path was retired in favor of provisioned Grafana dashboards
 
-**Tradeoff:** Simpler REST polling vs higher-complexity streaming.
-**Decision:** WebSocket + Event Streaming.
-Polling introduces latency spikes and data loss during volatility. A streaming-first model ensures continuous ingestion (800+ events/sec) with predictable latency, critical for capturing flash crashes.
-
-### 2. Redpanda vs Apache Kafka
-
-**Tradeoff:** Ecosystem maturity vs operational efficiency.
-**Decision:** Redpanda.
-Redpanda (C++) offers significantly lower memory footprint than JVM-based Kafka. It allows sustained ingestion on small cloud instances (t3.medium) without OOM risks.
-
-### 3. Decoupling Ingestion from Storage
-
-**Tradeoff:** Synchronous writes vs Fault Tolerance.
-**Decision:** Full decoupling via Message Broker.
-The ingest layer never blocks on database availability. Redpanda buffers data during DB maintenance, acting as a shock absorber during market volatility.
-
----
-
-⚠️ Limitations & Failure Modes:
-
-	•	Sensitivity to regime changes (model trained on one volatility regime)
-	•	False positives during news-driven volume spikes
-	•	RSI instability at low trade counts
-	•	Concept drift in prolonged trending markets
-
----
-
-## 🛠 Installation
-
+## Local Demo
 ### Prerequisites
 
-* Docker & Docker Compose
-* 4GB RAM recommended
+- Docker with Compose support
+- roughly 4 GB RAM available for the full local stack
 
-### Quick Start
+### Run
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/znodanilo2017-byte/quant-stream.git](https://github.com/znodanilo2017-byte/quant-stream.git)
-    cd quant-stream
-    ```
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
 
-2.  **Setup Configuration:**
-    Create the environment file from the example (default settings work out-of-the-box):
-    ```bash
-    cp .env.example .env
-    ```
+### Validate The Stack
 
-3.  **Start the pipeline:**
-    ```bash
-    docker-compose up -d --build
-    ```
+Run the built-in validation after startup:
 
-4.  **Access Grafana:**
-    * URL: `http://localhost:3000`
-    * Login: `admin` / `password`
+```bash
+bash scripts/validate_stack.sh
+```
 
----
+This checks that the expected containers are running, Grafana is healthy, the `TimescaleDB` datasource is provisioned, the `QuantStream Overview` dashboard exists, and the database tables are queryable.
 
-## 👤 Author
+### Open Grafana
 
-**Danylo Yuzefchyk** *Data Engineer / Quantitative Analyst* [LinkedIn](https://www.linkedin.com/in/danylo-yuzefchyk-330413231/) | [GitHub](https://github.com/znodanilo2017-byte)
+- URL: `http://localhost:3000`
+- Username: `admin`
+- Password: value of `GF_PASSWORD` in `.env` (`password` by default)
 
----
+### What To Expect
 
-## 📜 License
+- the Rust ingestor subscribes to BTCUSDT and ETHUSDT trades from Binance
+- the processor writes every trade into `trades`
+- once each symbol has enough history, z-score anomalies begin to appear in `anomalies`
+- Grafana refreshes automatically and visualizes both the stream and anomaly events
 
+### Repo Layout
+- `services/ingestor/crypto_ingestor`: active Rust websocket-to-Redpanda ingestor
+- `services/processor`: active Python processor that writes `trades` and `anomalies`
+- `grafana/provisioning`: active datasource and dashboard provisioning
+- `infrastructure/terraform/azure`: active VM bootstrap path for the same Compose stack
+- `ml_core`: offline research and historical experimentation, not part of the supported runtime
+- `infrastructure/terraform/legacy_aws_v1`: archived reference only
+
+### Troubleshooting
+
+If Grafana opens but panels stay empty:
+
+1. Run `bash scripts/validate_stack.sh` to confirm the datasource and dashboard are provisioned.
+2. Check service state with `docker compose ps`.
+3. Confirm data is arriving with:
+
+```bash
+docker exec timescaledb psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-market_data}" -c "SELECT count(*) FROM trades;"
+docker exec timescaledb psql -U "${DB_USER:-postgres}" -d "${DB_NAME:-market_data}" -c "SELECT count(*) FROM anomalies;"
+```
+
+4. Give the processor time to warm up; anomalies only appear after each symbol has filled the rolling window.
+5. If you changed provisioning or database bootstrap files, reset local state and start fresh:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+### Optional Offline Demo Helper
+
+`load_test.py` is kept as a local helper for synthetic websocket traffic when live Binance access is unavailable. It is not part of the default runtime path and is only intended for manual demo fallback.
+
+## Configuration
+The local stack reads the following variables from `.env`:
+
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `GF_PASSWORD`
+
+The processor also accepts runtime environment variables from `docker-compose.yml`:
+
+- `KAFKA_TOPIC`
+- `ROLLING_WINDOW`
+- `Z_SCORE_THRESHOLD`
+
+## Azure Deployment
+Azure is the active cloud direction for this repository.
+
+The Terraform in `infrastructure/terraform/azure` provisions a single Ubuntu VM with Docker prerequisites and network rules for SSH and Grafana access. It is intended to host the same Docker Compose stack used locally.
+
+Important scope note:
+
+- this is a VM-based deployment path, not a managed container platform
+- Terraform prepares the machine and network
+- the application still runs as the Compose stack described in this README
+- the default network rule is demo-friendly and should be narrowed before any public deployment
+
+## Legacy Infrastructure
+`infrastructure/terraform/legacy_aws_v1` is kept only as legacy reference material and is not part of the active deployment flow.
+
+## Engineering Notes
+- Redpanda keeps ingestion decoupled from storage and visualization.
+- TimescaleDB is used because the data is naturally time-series oriented and easy to query from Grafana.
+- Grafana is provisioned from the repository so the demo output is reproducible on a fresh startup.
+
+## Author
+**Danylo Yuzefchyk**  
+Data Engineer / Quantitative Analyst  
+[LinkedIn](https://www.linkedin.com/in/danylo-yuzefchyk-330413231/) | [GitHub](https://github.com/znodanilo2017-byte)
+
+## License
 This project is licensed under the MIT License.

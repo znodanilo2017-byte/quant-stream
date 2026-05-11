@@ -14,32 +14,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-       # (Створюємо конфіг з дефолтних налаштувань)
       - name: Create .env configuration
         run: cp .env.example .env
-
-      # Додаємо змінну, яку вимагає Postgres (якщо її немає в прикладі)
-      - name: Add Postgres Password explicitly
-        run: echo "POSTGRES_PASSWORD=password" >> .env
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker images
-        run: |
-          docker compose build
+        run: docker compose build
 
       - name: Start services
         run: |
           docker compose up -d
-          sleep 20
+          sleep 30
 
       - name: Check running containers
         run: |
           docker ps
           docker compose ps
 
-      - name: Basic health check
+      - name: Verify expected services are running
         run: |
-          docker inspect --format='{{.State.Running}}' quant-stream-ingestor-1
-          docker inspect --format='{{.State.Running}}' quant-stream-processor-1
+          docker inspect --format='{{.State.Running}}' redpanda
+          docker inspect --format='{{.State.Running}}' timescaledb
+          docker inspect --format='{{.State.Running}}' rust_ingestor
+          docker inspect --format='{{.State.Running}}' zscore_processor
+          docker inspect --format='{{.State.Running}}' grafana
+
+      - name: Check Grafana health endpoint
+        run: curl --fail http://localhost:3000/api/health
+
+      - name: Validate provisioned stack
+        run: bash ./scripts/validate_stack.sh

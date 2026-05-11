@@ -1,17 +1,16 @@
 import psycopg2
 import os
-import time
-
-# Force the connection params
-DB_HOST = "timescaledb"
-DB_NAME = "market_data"
-DB_USER = "postgres"
-DB_PASS = "password"
+DB_HOST = os.getenv("DB_HOST", "timescaledb")
+DB_NAME = os.getenv("DB_NAME", "market_data")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASS = os.getenv("DB_PASSWORD", "password")
+DB_PORT = int(os.getenv("DB_PORT", "5432"))
 
 print("1. Connecting to DB...")
 try:
     conn = psycopg2.connect(
         host=DB_HOST,
+        port=DB_PORT,
         database=DB_NAME,
         user=DB_USER,
         password=DB_PASS

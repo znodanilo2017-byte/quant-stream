@@ -11,13 +11,11 @@ provider "azurerm" {
   features {}
 }
 
-# 1. Resource Group
 resource "azurerm_resource_group" "rg" {
-  name     = "quant-stream-rg"
-  location = "Norway East"  
+  name     = var.resource_group_name
+  location = var.location
 }
 
-# 2. Networking
 resource "azurerm_virtual_network" "vnet" {
   name                = "quant-vnet"
   address_space       = ["10.0.0.0/16"]
@@ -36,11 +34,10 @@ resource "azurerm_public_ip" "public_ip" {
   name                = "quant-pip"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  allocation_method   = "Static"    # Standard <- Static
+  allocation_method   = "Static"
   sku                 = "Standard"
 }
 
-# 3. Security Group (Firewall)
 resource "azurerm_network_security_group" "nsg" {
   name                = "quant-nsg"
   location            = azurerm_resource_group.rg.location
@@ -54,7 +51,7 @@ resource "azurerm_network_security_group" "nsg" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefix      = "*" # your IP for production
+    source_address_prefix      = var.allowed_cidr
     destination_address_prefix = "*"
   }
 
@@ -66,7 +63,7 @@ resource "azurerm_network_security_group" "nsg" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "3000"
-    source_address_prefix      = "*"
+    source_address_prefix      = var.allowed_cidr
     destination_address_prefix = "*"
   }
 }
@@ -89,20 +86,19 @@ resource "azurerm_network_interface_security_group_association" "nsg_assoc" {
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
-# 4. Virtual Machine (Ubuntu 22.04)
 resource "azurerm_linux_virtual_machine" "vm" {
   name                = "quant-stream-vm"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  size                = "Standard_D2as_v4" # 2 vCPU, 4GB RAM (Оптимально)
-  admin_username      = "azureuser"
+  size                = var.vm_size
+  admin_username      = var.admin_username
   network_interface_ids = [
     azurerm_network_interface.nic.id,
   ]
 
   admin_ssh_key {
-    username   = "azureuser"
-    public_key = file("~/.ssh/id_rsa_azure.pub") # Your key
+    username   = var.admin_username
+    public_key = file(var.ssh_public_key_path)
   }
 
   os_disk {
@@ -117,7 +113,6 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 
-  # 5. Cloud-Init Script (Авто-встановлення Docker)
   custom_data = base64encode(<<-EOF
               #!/bin/bash
               apt-get update
@@ -127,12 +122,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
               echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
               apt-get update
               apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-              usermod -aG docker azureuser
-              
-              # Клонування репо та запуск (Опціонально, можна робити руками)
-              # cd /home/azureuser
-              # git clone https://github.com/znodanilo2017-byte/quant-stream.git
-              # chown -R azureuser:azureuser quant-stream
+              usermod -aG docker ${var.admin_username}
               EOF
   )
 }
