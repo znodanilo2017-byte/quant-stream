@@ -1,25 +1,28 @@
 services:
   redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:v25.3.5
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.5 # Keep v25 if you want the latest features (valid in 2026)
     container_name: redpanda
     command:
       - redpanda start
-      - --smp 1 
-      - --memory 512M
+      - --smp 1
+      - --memory 1G              # 1G is safer than 512M
       - --reserve-memory 0M
       - --overprovisioned
+      - --node-id 0              # Helps startup stability
+      - --check=false            # Skips production system checks
+      # KEEPS DUAL LISTENERS (Crucial for Mac access)
       - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
       - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
     ports:
-      - 19092:19092
-      - 9644:9644
+      - 19092:19092              # Access from host via localhost:19092
+      - 9644:9644                # Admin port
     volumes:
       - redpanda-data:/var/lib/redpanda/data
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "info"]
+      test: ["CMD", "rpk", "cluster", "health"] # The better healthcheck
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
 
   timescaledb:
     image: timescale/timescaledb:latest-pg15
@@ -42,11 +45,13 @@ services:
       retries: 10
 
   ingestor:
-    build: ./services/ingestor
+    build: ./services/ingestor/crypto_ingestor
+    container_name: rust_ingestor
     depends_on:
       redpanda:
         condition: service_healthy
     environment:
+      - WS_URL=wss://stream.binance.com:9443/stream?streams=btcusdt@trade/ethusdt@trade
       - KAFKA_BROKER=redpanda:9092
 
   processor:

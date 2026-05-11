@@ -1,0 +1,9 @@
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/deps/socket2-210b0fca2d2d8af2.d: /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/lib.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sockaddr.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/socket.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sockref.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sys/unix.rs
+
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/deps/libsocket2-210b0fca2d2d8af2.rmeta: /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/lib.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sockaddr.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/socket.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sockref.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sys/unix.rs
+
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/lib.rs:
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sockaddr.rs:
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/socket.rs:
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sockref.rs:
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/socket2-0.6.2/src/sys/unix.rs:
