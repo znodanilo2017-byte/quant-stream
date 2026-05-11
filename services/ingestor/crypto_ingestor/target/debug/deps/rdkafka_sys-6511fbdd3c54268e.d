@@ -1,0 +1,8 @@
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/deps/rdkafka_sys-6511fbdd3c54268e.d: /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/lib.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/bindings.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/helpers.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/types.rs
+
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/deps/librdkafka_sys-6511fbdd3c54268e.rmeta: /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/lib.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/bindings.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/helpers.rs /Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/types.rs
+
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/lib.rs:
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/bindings.rs:
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/helpers.rs:
+/Users/danyloyuzefchyk/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rdkafka-sys-4.10.0+2.12.1/src/types.rs:

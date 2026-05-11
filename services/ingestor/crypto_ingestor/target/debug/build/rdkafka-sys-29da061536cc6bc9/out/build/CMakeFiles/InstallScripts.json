@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/build/cmake_install.cmake",
+		"/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/build/src/cmake_install.cmake",
+		"/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/build/src-cpp/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

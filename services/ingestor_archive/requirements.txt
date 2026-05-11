@@ -1,0 +1,4 @@
+aiohttp
+kafka-python-ng
+asyncio
+aiokafka

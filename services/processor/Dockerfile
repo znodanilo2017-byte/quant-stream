@@ -9,4 +9,4 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY . .
 COPY model_v2.pkl .
-CMD ["python", "-u", "main.py"]
+CMD ["python", "-u", "processor.py"]

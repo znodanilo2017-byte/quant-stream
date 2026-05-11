@@ -1,0 +1,13 @@
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/cmake/RdKafka/RdKafkaConfig.cmake
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/cmake/RdKafka/RdKafkaConfigVersion.cmake
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/cmake/RdKafka/FindLZ4.cmake
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/cmake/RdKafka/RdKafkaTargets.cmake
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/cmake/RdKafka/RdKafkaTargets-debug.cmake
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/share/licenses/librdkafka/LICENSES.txt
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/pkgconfig/rdkafka-static.pc
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/librdkafka.a
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/include/librdkafka/rdkafka.h
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/include/librdkafka/rdkafka_mock.h
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/pkgconfig/rdkafka++-static.pc
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/lib/librdkafka++.a
+/Users/danyloyuzefchyk/quant-platform-final/services/ingestor_rust/crypto_ingestor/target/debug/build/rdkafka-sys-29da061536cc6bc9/out/include/librdkafka/rdkafkacpp.h
